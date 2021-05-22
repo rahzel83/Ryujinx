@@ -1,7 +1,7 @@
 using ARMeilleure.Translation.PTC;
-using FFmpeg.AutoGen;
 using Gtk;
 using Ryujinx.Common.Configuration;
+using Ryujinx.Common.GraphicsDriver;
 using Ryujinx.Common.Logging;
 using Ryujinx.Common.System;
 using Ryujinx.Common.SystemInfo;
@@ -77,9 +77,6 @@ namespace Ryujinx
             if (OperatingSystem.IsLinux())
             {
                 XInitThreads();
-
-                // Configure FFmpeg search path
-                ffmpeg.RootPath = "/lib";
             }
 
             string systemPath = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.Machine);
@@ -147,6 +144,9 @@ namespace Ryujinx
             // Logging system information.
             PrintSystemInfo();
 
+            // Enable OGL multithreading on the driver, when available.
+            DriverUtilities.ToggleOGLThreading(true);
+
             // Initialize Gtk.
             Application.Init();
 
@@ -157,9 +157,6 @@ namespace Ryujinx
             {
                 UserErrorDialog.CreateUserErrorDialog(UserError.NoKeys);
             }
-
-            // Force dedicated GPU if we can.
-            ForceDedicatedGpu.Nvidia();
 
             // Show the main window UI.
             MainWindow mainWindow = new MainWindow();

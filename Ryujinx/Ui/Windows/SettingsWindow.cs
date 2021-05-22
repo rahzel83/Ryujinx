@@ -50,6 +50,9 @@ namespace Ryujinx.Ui.Windows
         [GUI] CheckButton     _shaderCacheToggle;
         [GUI] CheckButton     _ptcToggle;
         [GUI] CheckButton     _fsicToggle;
+        [GUI] RadioButton     _mmSoftware;
+        [GUI] RadioButton     _mmHost;
+        [GUI] RadioButton     _mmHostUnsafe;
         [GUI] CheckButton     _expandRamToggle;
         [GUI] CheckButton     _ignoreToggle;
         [GUI] CheckButton     _directKeyboardAccess;
@@ -214,6 +217,19 @@ namespace Ryujinx.Ui.Windows
                 _fsicToggle.Click();
             }
 
+            switch (ConfigurationState.Instance.System.MemoryManagerMode.Value)
+            {
+                case MemoryManagerMode.SoftwarePageTable:
+                    _mmSoftware.Click();
+                    break;
+                case MemoryManagerMode.HostMapped:
+                    _mmHost.Click();
+                    break;
+                case MemoryManagerMode.HostMappedUnsafe:
+                    _mmHostUnsafe.Click();
+                    break;
+            }
+
             if (ConfigurationState.Instance.System.ExpandRam)
             {
                 _expandRamToggle.Click();
@@ -263,7 +279,7 @@ namespace Ryujinx.Ui.Windows
             }
 
             _systemTimeZoneEntry.WidthChars = Math.Max(20, maxLocationLength + 1); // Ensure minimum Entry width
-            _systemTimeZoneEntry.Text = _timeZoneContentManager.SanityCheckDeviceLocationName();
+            _systemTimeZoneEntry.Text = _timeZoneContentManager.SanityCheckDeviceLocationName(ConfigurationState.Instance.System.TimeZone);
 
             _systemTimeZoneCompletion.MatchFunc = TimeZoneMatchFunc;
 
@@ -411,6 +427,18 @@ namespace Ryujinx.Ui.Windows
                 ConfigurationState.Instance.System.TimeZone.Value = _systemTimeZoneEntry.Text;
             }
 
+            MemoryManagerMode memoryMode = MemoryManagerMode.SoftwarePageTable;
+
+            if (_mmHost.Active)
+            {
+                memoryMode = MemoryManagerMode.HostMapped;
+            }
+
+            if (_mmHostUnsafe.Active)
+            {
+                memoryMode = MemoryManagerMode.HostMappedUnsafe;
+            }
+
             ConfigurationState.Instance.Logger.EnableError.Value               = _errorLogToggle.Active;
             ConfigurationState.Instance.Logger.EnableWarn.Value                = _warningLogToggle.Active;
             ConfigurationState.Instance.Logger.EnableInfo.Value                = _infoLogToggle.Active;
@@ -429,6 +457,7 @@ namespace Ryujinx.Ui.Windows
             ConfigurationState.Instance.Graphics.EnableShaderCache.Value       = _shaderCacheToggle.Active;
             ConfigurationState.Instance.System.EnablePtc.Value                 = _ptcToggle.Active;
             ConfigurationState.Instance.System.EnableFsIntegrityChecks.Value   = _fsicToggle.Active;
+            ConfigurationState.Instance.System.MemoryManagerMode.Value         = memoryMode;
             ConfigurationState.Instance.System.ExpandRam.Value                 = _expandRamToggle.Active;
             ConfigurationState.Instance.System.IgnoreMissingServices.Value     = _ignoreToggle.Active;
             ConfigurationState.Instance.Hid.EnableKeyboard.Value               = _directKeyboardAccess.Active;
@@ -462,7 +491,7 @@ namespace Ryujinx.Ui.Windows
         {
             if (!_validTzRegions.Contains(_systemTimeZoneEntry.Text))
             {
-                _systemTimeZoneEntry.Text = _timeZoneContentManager.SanityCheckDeviceLocationName();
+                _systemTimeZoneEntry.Text = _timeZoneContentManager.SanityCheckDeviceLocationName(ConfigurationState.Instance.System.TimeZone);
             }
         }
 

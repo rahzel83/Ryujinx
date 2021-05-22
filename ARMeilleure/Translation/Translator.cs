@@ -4,6 +4,7 @@ using ARMeilleure.Diagnostics;
 using ARMeilleure.Instructions;
 using ARMeilleure.IntermediateRepresentation;
 using ARMeilleure.Memory;
+using ARMeilleure.Signal;
 using ARMeilleure.State;
 using ARMeilleure.Translation.Cache;
 using ARMeilleure.Translation.PTC;
@@ -63,6 +64,11 @@ namespace ARMeilleure.Translation
             JitCache.Initialize(allocator);
 
             DirectCallStubs.InitializeStubs();
+
+            if (memory.Type == MemoryManagerType.HostMapped)
+            {
+                NativeSignalHandler.InitializeSignalHandler();
+            }
         }
 
         private void TranslateStackedSubs()
@@ -237,13 +243,6 @@ namespace ARMeilleure.Translation
 
             Logger.StartPass(PassName.Translation);
 
-            Counter<uint> counter = null;
-
-            if (!context.HighCq)
-            {
-                EmitRejitCheck(context, out counter);
-            }
-
             EmitSynchronization(context);
 
             if (blocks[0].Address != address)
@@ -251,7 +250,7 @@ namespace ARMeilleure.Translation
                 context.Branch(context.GetLabel(address));
             }
 
-            ControlFlowGraph cfg = EmitAndGetCFG(context, blocks, out Range funcRange);
+            ControlFlowGraph cfg = EmitAndGetCFG(context, blocks, out Range funcRange, out Counter<uint> counter);
 
             ulong funcSize = funcRange.End - funcRange.Start;
 
@@ -322,8 +321,14 @@ namespace ARMeilleure.Translation
             }
         }
 
-        private static ControlFlowGraph EmitAndGetCFG(ArmEmitterContext context, Block[] blocks, out Range range)
+        private static ControlFlowGraph EmitAndGetCFG(
+            ArmEmitterContext context,
+            Block[] blocks,
+            out Range range,
+            out Counter<uint> counter)
         {
+            counter = null;
+
             ulong rangeStart = ulong.MaxValue;
             ulong rangeEnd = 0;
 
@@ -342,6 +347,11 @@ namespace ARMeilleure.Translation
                     {
                         rangeEnd = block.EndAddress;
                     }
+                }
+
+                if (block.Address == context.EntryAddress && !context.HighCq)
+                {
+                    EmitRejitCheck(context, out counter);
                 }
 
                 context.CurrBlock = block;
